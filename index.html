@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手寫紀錄筆記 - 進階版</title>
+    <style>
+        /* 日系簡約風格 */
+        body { font-family: "Noto Sans TC", sans-serif; background: #fafafa; color: #333; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        h2 { font-weight: 400; color: #555; }
+        
+        #canvas-container { background: white; border: 1px solid #d1d1d1; border-radius: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        canvas { cursor: crosshair; touch-action: none; background: #fff; }
+        
+        .controls { margin-top: 20px; display: flex; gap: 12px; }
+        button { padding: 8px 20px; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; transition: 0.2s; font-size: 14px; }
+        button:hover { background: #f0f0f0; }
+        .save-btn { background: #7a8a99; color: white; border: none; }
+        .save-btn:hover { background: #667582; }
+
+        #history { margin-top: 40px; width: 100%; max-width: 600px; }
+        .history-header { border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .record-list { display: flex; flex-direction: column; gap: 15px; }
+        .record-card { background: white; padding: 15px; border-radius: 4px; border: 1px solid #eee; display: flex; gap: 15px; align-items: flex-start; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .record-card img { border: 1px solid #f0f0f0; width: 120px; background: #fff; }
+        
+        .record-info { flex-grow: 1; }
+        .record-time { font-size: 12px; color: #999; margin-bottom: 8px; }
+        
+        .action-btns { display: flex; gap: 8px; margin-top: 10px; }
+        .action-btns button { padding: 4px 10px; font-size: 12px; }
+        .export-btn { border-color: #28a745; color: #28a745; }
+        .export-btn:hover { background: #e8f5e9; }
+    </style>
+</head>
+<body>
+
+    <h2>手寫繪製筆記</h2>
+    
+    <div id="canvas-container">
+        <canvas id="handwritingCanvas" width="350" height="300"></canvas>
+    </div>
+
+    <div class="controls">
+        <button onclick="clearCanvas()">清空畫布</button>
+        <button class="save-btn" onclick="saveDrawing()">儲存內容</button>
+    </div>
+
+    <div id="history">
+        <div class="history-header">
+            <h3>歷史紀錄 (最新在上)</h3>
+        </div>
+        <div id="recordList" class="record-list"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('handwritingCanvas');
+        const ctx = canvas.getContext('2d');
+        const recordList = document.getElementById('recordList');
+        let isDrawing = false;
+        let editIndex = null;
+
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#333';
+
+        // 繪圖邏輯
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function startDrawing(e) { isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); }
+        function draw(e) { if (!isDrawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
+        function stopDrawing() { isDrawing = false; }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        window.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); });
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); editIndex = null; }
+
+        // 儲存邏輯 (包含日期時間與排序)
+        function saveDrawing() {
+            const dataURL = canvas.toDataURL("image/png");
+            const now = new Date();
+            const timeString = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+            
+            let savedRecords = JSON.parse(localStorage.getItem('handwriting_notes') || '[]');
+
+            if (editIndex !== null) {
+                // 編輯模式：更新內容，但不改變時間（或可改為更新時間）
+                savedRecords[editIndex].image = dataURL;
+                savedRecords[editIndex].time = timeString + " (已編輯)";
+                editIndex = null;
+            } else {
+                // 新增模式：使用 unshift 讓新檔案排在最前面
+                savedRecords.unshift({ image: dataURL, time: timeString });
+            }
+
+            localStorage.setItem('handwriting_notes', JSON.stringify(savedRecords));
+            clearCanvas();
+            renderRecords();
+        }
+
+        // 渲染列表
+        function renderRecords() {
+            recordList.innerHTML = '';
+            const savedRecords = JSON.parse(localStorage.getItem('handwriting_notes') || '[]');
+
+            savedRecords.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'record-card';
+                card.innerHTML = `
+                    <img src="${item.image}">
+                    <div class="record-info">
+                        <div class="record-time">${item.time}</div>
+                        <div class="action-btns">
+                            <button onclick="editRecord(${index})">編輯</button>
+                            <button class="export-btn" onclick="exportImage('${item.image}', '${item.time}')">輸出圖片</button>
+                            <button onclick="deleteRecord(${index})">刪除</button>
+                        </div>
+                    </div>
+                `;
+                recordList.appendChild(card);
+            });
+        }
+
+        // 輸出圖片功能
+        function exportImage(dataURL, time) {
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = `手寫紀錄_${time.replace(/[\/ :]/g, '_')}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function deleteRecord(index) {
+            let savedRecords = JSON.parse(localStorage.getItem('handwriting_notes') || '[]');
+            savedRecords.splice(index, 1);
+            localStorage.setItem('handwriting_notes', JSON.stringify(savedRecords));
+            renderRecords();
+        }
+
+        function editRecord(index) {
+            const savedRecords = JSON.parse(localStorage.getItem('handwriting_notes') || '[]');
+            const img = new Image();
+            img.onload = function() {
+                clearCanvas();
+                ctx.drawImage(img, 0, 0);
+                editIndex = index;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+            img.src = savedRecords[index].image;
+        }
+
+        renderRecords();
+    </script>
+</body>
+</html>
