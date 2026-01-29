@@ -2,90 +2,138 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>邱老師手寫診斷</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>邱老師雲端手寫筆記</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f5f3f0; }
-        #status { padding: 15px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #ccc; background: white; }
-        .success { color: green; border-color: green; }
-        .error { color: red; border-color: red; }
-        canvas { border: 2px solid #333; background: white; touch-action: none; width: 100%; max-width: 400px; height: 300px; }
+        :root { --muji-beige: #f5f3f0; --muji-charcoal: #333333; --muji-white: #ffffff; }
+        body { margin: 0; font-family: sans-serif; background: var(--muji-beige); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .header { background: var(--muji-white); padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; }
+        #canvas-wrap { flex: 1; background: white; margin: 10px; border-radius: 5px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        canvas { width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+        .btn { padding: 8px 15px; border-radius: 4px; border: 1px solid #ccc; background: white; cursor: pointer; }
+        .btn-save { background: var(--muji-charcoal); color: white; border: none; }
+        #history { height: 200px; overflow-y: auto; background: var(--muji-beige); padding: 10px; border-top: 1px solid #ddd; }
+        .record { background: white; padding: 10px; margin-bottom: 10px; border-radius: 4px; display: flex; gap: 10px; align-items: center; }
+        .record img { width: 80px; border: 1px solid #eee; }
+        .record-info { font-size: 12px; color: #666; flex: 1; }
     </style>
 </head>
 <body>
 
-    <h2>雲端連線測試</h2>
-    <div id="status">正在檢查網路與 Firebase 載入狀態...</div>
-    
-    <canvas id="testCanvas"></canvas>
-    <br><br>
-    <button id="saveBtn" style="padding: 10px 20px;">點我測試儲存</button>
+    <div class="header">
+        <h2 style="font-size: 16px; margin: 0;">雲端隨手記</h2>
+        <div style="display:flex; gap:8px;">
+            <button class="btn" onclick="window.clearCanvas()">清空</button>
+            <button class="btn btn-save" id="saveBtn">儲存同步</button>
+        </div>
+    </div>
+
+    <div id="canvas-wrap">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <div id="history">
+        <div id="status" style="font-size:12px; margin-bottom:10px; color: green;">✅ 連線正常</div>
+        <div id="recordList">載入紀錄中...</div>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 
     <script>
-        const statusDiv = document.getElementById('status');
-        
-        // 1. 檢查 Firebase 是否載入成功
-        if (typeof firebase === 'undefined') {
-            statusDiv.innerHTML = "❌ <b>錯誤：無法載入 Firebase 程式庫。</b><br>這通常是網路擋住了 gstatic.com，或是您目前沒有連上網路。";
-            statusDiv.className = "error";
-        } else {
-            statusDiv.innerHTML = "⏳ Firebase 載入成功，正在嘗試連線資料庫...";
-            
-            const firebaseConfig = {
-                apiKey: "AIzaSyDtTj8uoMK5l-XPDecE4Yyl_3IFCJB1SdQ",
-                authDomain: "singer-9d813.firebaseapp.com",
-                projectId: "singer-9d813",
-                storageBucket: "singer-9d813.appspot.com",
-                messagingSenderId: "550661805021",
-                appId: "1:550661805021:web:1f61bc3bada3e07dcd5c34"
-            };
+        // --- Firebase 設定 ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtTj8uoMK5l-XPDecE4Yyl_3IFCJB1SdQ",
+            authDomain: "singer-9d813.firebaseapp.com",
+            projectId: "singer-9d813",
+            storageBucket: "singer-9d813.appspot.com",
+            messagingSenderId: "550661805021",
+            appId: "1:550661805021:web:1f61bc3bada3e07dcd5c34"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
 
-            try {
-                // 初始化
-                firebase.initializeApp(firebaseConfig);
-                const db = firebase.firestore();
-                
-                // 測試讀取
-                db.collection("handwriting_notes").limit(1).get().then(() => {
-                    statusDiv.innerHTML = "✅ <b>連線完全正常！</b><br>資料庫已就緒。請嘗試畫圖並點擊儲存按鈕。";
-                    statusDiv.className = "success";
-                }).catch((err) => {
-                    statusDiv.innerHTML = "❌ <b>資料庫連線失敗</b><br>原因：" + err.message;
-                    statusDiv.className = "error";
-                });
+        // --- 畫布邏輯修正 ---
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrap = document.getElementById('canvas-wrap');
+        let drawing = false;
 
-                // 基礎畫布邏輯
-                const canvas = document.getElementById('testCanvas');
-                const ctx = canvas.getContext('2d');
-                let drawing = false;
-                ctx.lineWidth = 3;
-
-                canvas.onmousedown = () => { drawing = true; ctx.beginPath(); };
-                canvas.onmousemove = (e) => { if(!drawing) return; ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); };
-                window.onmouseup = () => drawing = false;
-
-                // 儲存測試
-                document.getElementById('saveBtn').onclick = async () => {
-                    const data = canvas.toDataURL();
-                    try {
-                        await db.collection("handwriting_notes").add({
-                            data: data,
-                            time: new Date().toLocaleString(),
-                            createdAt: Date.now()
-                        });
-                        alert("儲存成功！請檢查另一台設備。");
-                    } catch (e) {
-                        alert("儲存出錯：" + e.message);
-                    }
-                };
-
-            } catch (e) {
-                statusDiv.innerHTML = "❌ 初始化過程出錯：" + e.message;
-            }
+        function resize() {
+            // 修正座標偏移問題：讓畫布內部解析度等於顯示大小
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#333';
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
+        window.addEventListener('load', resize);
+        window.addEventListener('resize', resize);
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            // 同時處理滑鼠與觸控座標
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        const start = (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); };
+        const move = (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+        const end = () => { drawing = false; };
+
+        // 滑鼠事件
+        canvas.addEventListener('mousedown', start);
+        canvas.addEventListener('mousemove', move);
+        window.addEventListener('mouseup', end);
+
+        // 觸控事件 (解決手機無法繪圖)
+        canvas.addEventListener('touchstart', start, {passive: false});
+        canvas.addEventListener('touchmove', move, {passive: false});
+        canvas.addEventListener('touchend', end);
+
+        window.clearCanvas = () => { ctx.fillRect(0, 0, canvas.width, canvas.height); };
+
+        // --- 雲端儲存 ---
+        document.getElementById('saveBtn').onclick = async () => {
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = "儲存中...";
+            const data = canvas.toDataURL("image/png");
+            try {
+                await db.collection("handwriting_notes").add({
+                    data: data,
+                    time: new Date().toLocaleString(),
+                    createdAt: Date.now()
+                });
+                window.clearCanvas();
+            } catch (e) { alert("錯誤：" + e.message); }
+            btn.innerText = "儲存同步";
+        };
+
+        // --- 雲端即時讀取 (解決看不到電腦畫的圖) ---
+        db.collection("handwriting_notes").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
+            const list = document.getElementById('recordList');
+            list.innerHTML = '';
+            snapshot.forEach((doc) => {
+                const item = doc.data();
+                const div = document.createElement('div');
+                div.className = 'record';
+                div.innerHTML = `
+                    <img src="${item.data}">
+                    <div class="record-info">${item.time}</div>
+                    <button onclick="deleteDoc('${doc.id}')" style="font-size:10px; color:red; border:none; background:none; cursor:pointer;">刪除</button>
+                `;
+                list.appendChild(div);
+            });
+        });
+
+        window.deleteDoc = (id) => { if(confirm("確定刪除？")) db.collection("handwriting_notes").doc(id).delete(); };
+
     </script>
 </body>
 </html>
