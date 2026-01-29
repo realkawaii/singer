@@ -3,50 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>邱老師的手寫雲端筆記</title>
+    <title>診斷模式：雲端手寫記事</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         :root { --muji-beige: #f5f3f0; --muji-charcoal: #333333; --muji-stone: #e0dbd5; --muji-white: #ffffff; }
         body { margin: 0; padding: 0; font-family: 'Noto Sans TC', sans-serif; background-color: var(--muji-beige); color: var(--muji-charcoal); display: flex; flex-direction: column; height: 100vh; }
-        .header { padding: 15px; background: var(--muji-white); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--muji-stone); position: sticky; top: 0; z-index: 100; }
+        .header { padding: 15px; background: var(--muji-white); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--muji-stone); }
         #canvas-wrap { flex: 1; position: relative; background: var(--muji-white); margin: 10px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); min-height: 300px; }
         canvas { display: block; touch-action: none; background: white; width: 100%; height: 100%; }
-        .btn-group { display: flex; gap: 8px; }
         button { border: 1px solid var(--muji-stone); background: var(--muji-white); padding: 8px 12px; border-radius: 2px; font-size: 14px; cursor: pointer; }
         button.save { background: var(--muji-charcoal); color: var(--muji-white); border: none; }
-        #history { padding: 15px; background: var(--muji-beige); padding-bottom: 50px; }
+        #history { padding: 15px; background: var(--muji-beige); }
         .record-card { background: var(--muji-white); padding: 12px; margin-bottom: 15px; border-radius: 4px; border: 1px solid var(--muji-stone); }
-        .record-content { display: flex; align-items: flex-start; gap: 12px; }
-        .record-card img { width: 120px; height: auto; border: 1px solid var(--muji-stone); background: #fff; }
-        .card-actions { border-top: 1px solid var(--muji-beige); padding-top: 10px; margin-top: 10px; display: flex; justify-content: flex-end; gap: 20px; }
-        .action-link { font-size: 13px; text-decoration: underline; background: none; border: none; cursor: pointer; padding: 0; }
-        .edit-link { color: #556b2f; } .del-link { color: #a52a2a; } .download-link { color: #007bff; }
+        .record-card img { width: 120px; height: auto; border: 1px solid var(--muji-stone); }
+        .error-box { background: #fff5f5; color: #c0392b; padding: 15px; border: 1px solid #ebccd1; border-radius: 4px; margin: 10px; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2 style="font-size: 18px; margin:0; font-weight: 500;">雲端手寫記事</h2>
-        <div class="btn-group">
+        <h2 style="font-size: 18px; margin:0;">診斷模式</h2>
+        <div style="display:flex; gap:8px;">
             <button onclick="window.clearCanvas()">清空</button>
             <button class="save" id="saveBtn">儲存同步</button>
         </div>
     </div>
 
-    <div id="canvas-wrap">
-        <canvas id="mainCanvas"></canvas>
-    </div>
+    <div id="canvas-wrap"><canvas id="mainCanvas"></canvas></div>
 
     <div id="history">
-        <h3 style="font-size: 16px; font-weight: 500; border-left: 3px solid var(--muji-charcoal); padding-left: 10px; margin-bottom: 15px;">歷史紀錄 (即時同步)</h3>
-        <div id="recordList">正在連接雲端資料庫...</div>
+        <h3 style="font-size: 16px;">連線狀態回報：</h3>
+        <div id="recordList">正在初始化 Firebase...</div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-        // 已為您填入 singer-9d813 相關資訊
         const firebaseConfig = {
             apiKey: "AIzaSyDtTj8uoMK5l-XPDecE4Yyl_3IFCJB1SdQ",
             authDomain: "singer-9d813.firebaseapp.com",
@@ -56,33 +49,49 @@
             appId: "1:550661805021:web:1f61bc3bada3e07dcd5c34"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const notesCol = collection(db, "handwriting_notes");
+        const recordList = document.getElementById('recordList');
 
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const notesCol = collection(db, "handwriting_notes");
+
+            // 監聽雲端資料
+            onSnapshot(query(notesCol, orderBy("createdAt", "desc")), (snapshot) => {
+                recordList.innerHTML = '';
+                if (snapshot.empty) {
+                    recordList.innerHTML = '<div style="color:green;">✅ 連線成功！雲端目前沒有資料，請在上方畫圖並點擊儲存。</div>';
+                }
+                snapshot.forEach((d) => {
+                    const item = d.data();
+                    const card = document.createElement('div');
+                    card.className = 'record-card';
+                    card.innerHTML = `<img src="${item.data}"><p>${item.time}</p>`;
+                    recordList.appendChild(card);
+                });
+            }, (err) => {
+                // ❗ 這裡最重要，它會告訴我們為什麼連不上
+                recordList.innerHTML = `<div class="error-box"><b>❌ 連線失敗</b><br>原因：${err.message}<br><br>請確認 Firebase 的「Rules」是否已改為 if true。</div>`;
+            });
+
+            // 儲存功能
+            document.getElementById('saveBtn').onclick = async () => {
+                const dataURL = canvas.toDataURL("image/png");
+                const timeStr = new Date().toLocaleString();
+                try {
+                    await addDoc(notesCol, { data: dataURL, time: timeStr, createdAt: Date.now() });
+                    window.clearCanvas();
+                } catch (e) { alert("儲存出錯：" + e.message); }
+            };
+
+        } catch (e) {
+            recordList.innerHTML = `<div class="error-box">初始化錯誤：${e.message}</div>`;
+        }
+
+        // 畫布基礎邏輯
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
         const wrap = document.getElementById('canvas-wrap');
-        const recordList = document.getElementById('recordList');
         let isDrawing = false;
-        let editDocId = null;
 
-        function initCanvas() {
-            canvas.width = wrap.clientWidth;
-            canvas.height = wrap.clientHeight;
-            ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-            ctx.strokeStyle = '#333'; ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
-        }
-
-        canvas.addEventListener('touchstart', (e) => { isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }, {passive: false});
-        canvas.addEventListener('touchmove', (e) => { if(!isDrawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }, {passive: false});
-        window.addEventListener('touchend', () => isDrawing = false);
-        canvas.addEventListener('mousedown', (e) => { isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+        window.onload = () => {
