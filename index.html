@@ -3,161 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>手寫記事 Pro - 無印風</title>
+    <title>邱老師的手寫雲端筆記</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --muji-beige: #f5f3f0;
-            --muji-charcoal: #333333;
-            --muji-stone: #e0dbd5;
-            --muji-white: #ffffff;
-            --muji-red: #a52a2a;
-            --muji-blue: #4682b4;
-            --muji-green: #556b2f;
-        }
-
-        body {
-            margin: 0; padding: 0;
-            font-family: 'Noto Sans TC', sans-serif;
-            background-color: var(--muji-beige);
-            color: var(--muji-charcoal);
-            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
-        }
-
-        /* 頂部控制區 */
-        .header {
-            padding: 10px 15px; background: var(--muji-white);
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--muji-stone);
-        }
-
-        /* 工具列：顏色與模式 */
-        .toolbar {
-            padding: 10px; background: #fafafa;
-            display: flex; gap: 10px; align-items: center;
-            overflow-x: auto; border-bottom: 1px solid var(--muji-stone);
-        }
-
-        .color-circle {
-            width: 25px; height: 25px; border-radius: 50%; border: 2px solid transparent; cursor: pointer;
-        }
-        .color-circle.active { border-color: var(--muji-charcoal); transform: scale(1.1); }
-
-        .tool-btn {
-            padding: 5px 12px; border: 1px solid var(--muji-stone);
-            background: white; font-size: 13px; border-radius: 4px;
-        }
-        .tool-btn.active { background: var(--muji-charcoal); color: white; }
-
-        /* 畫布 */
-        #canvas-wrap { flex: 1; position: relative; background: white; margin: 0; }
-        canvas { display: block; touch-action: none; background-color: #ffffff; }
-
-        /* 底部按鈕 */
-        .footer-btns {
-            padding: 15px; display: flex; gap: 10px; background: var(--muji-white);
-        }
-        .footer-btns button { flex: 1; padding: 12px; border-radius: 4px; font-size: 15px; cursor: pointer; border: 1px solid var(--muji-stone); }
-        .btn-save { background: var(--muji-charcoal); color: white; border: none !important; }
-
-        /* 歷史紀錄彈出視窗 */
-        #history-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); display: none; z-index: 100;
-        }
-        .history-content {
-            position: absolute; bottom: 0; width: 100%; height: 80%;
-            background: var(--muji-beige); border-radius: 20px 20px 0 0;
-            padding: 20px; box-sizing: border-box; overflow-y: auto;
-        }
-        .close-history { float: right; font-size: 24px; cursor: pointer; }
-
-        .record-card {
-            background: white; padding: 12px; margin-bottom: 15px; border-radius: 8px;
-            display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--muji-stone);
-        }
-        .record-card img { width: 100%; height: auto; border: 1px solid var(--muji-beige); }
-        .card-actions { display: flex; justify-content: space-between; font-size: 13px; }
-        .action-link { color: var(--muji-charcoal); text-decoration: underline; background: none; border: none; padding: 0; }
+        :root { --muji-beige: #f5f3f0; --muji-charcoal: #333333; --muji-stone: #e0dbd5; --muji-white: #ffffff; }
+        body { margin: 0; padding: 0; font-family: 'Noto Sans TC', sans-serif; background-color: var(--muji-beige); color: var(--muji-charcoal); display: flex; flex-direction: column; height: 100vh; }
+        .header { padding: 15px; background: var(--muji-white); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--muji-stone); position: sticky; top: 0; z-index: 100; }
+        #canvas-wrap { flex: 1; position: relative; background: var(--muji-white); margin: 10px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); min-height: 300px; }
+        canvas { display: block; touch-action: none; background: white; width: 100%; height: 100%; }
+        .btn-group { display: flex; gap: 8px; }
+        button { border: 1px solid var(--muji-stone); background: var(--muji-white); padding: 8px 12px; border-radius: 2px; font-size: 14px; cursor: pointer; }
+        button.save { background: var(--muji-charcoal); color: var(--muji-white); border: none; }
+        #history { padding: 15px; background: var(--muji-beige); padding-bottom: 50px; }
+        .record-card { background: var(--muji-white); padding: 12px; margin-bottom: 15px; border-radius: 4px; border: 1px solid var(--muji-stone); }
+        .record-content { display: flex; align-items: flex-start; gap: 12px; }
+        .record-card img { width: 120px; height: auto; border: 1px solid var(--muji-stone); background: #fff; }
+        .card-actions { border-top: 1px solid var(--muji-beige); padding-top: 10px; margin-top: 10px; display: flex; justify-content: flex-end; gap: 20px; }
+        .action-link { font-size: 13px; text-decoration: underline; background: none; border: none; cursor: pointer; padding: 0; }
+        .edit-link { color: #556b2f; } .del-link { color: #a52a2a; } .download-link { color: #007bff; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2 style="margin:0; font-size:16px;">手寫筆記 Pro</h2>
-        <button class="tool-btn" onclick="clearCanvas()">全清</button>
-    </div>
-
-    <div class="toolbar">
-        <div class="color-circle active" style="background: var(--muji-charcoal);" onclick="setTool('brush', 'var(--muji-charcoal)', this)"></div>
-        <div class="color-circle" style="background: var(--muji-red);" onclick="setTool('brush', 'var(--muji-red)', this)"></div>
-        <div class="color-circle" style="background: var(--muji-blue);" onclick="setTool('brush', 'var(--muji-blue)', this)"></div>
-        <div class="color-circle" style="background: var(--muji-green);" onclick="setTool('brush', 'var(--muji-green)', this)"></div>
-        <div style="width: 1px; height: 20px; background: #ccc; margin: 0 5px;"></div>
-        <button id="eraser-btn" class="tool-btn" onclick="setTool('eraser', null, this)">橡皮擦</button>
+        <h2 style="font-size: 18px; margin:0; font-weight: 500;">雲端手寫記事</h2>
+        <div class="btn-group">
+            <button onclick="window.clearCanvas()">清空</button>
+            <button class="save" id="saveBtn">儲存同步</button>
+        </div>
     </div>
 
     <div id="canvas-wrap">
         <canvas id="mainCanvas"></canvas>
     </div>
 
-    <div class="footer-btns">
-        <button onclick="showHistory()">查看歷史紀錄</button>
-        <button class="btn-save" onclick="saveDrawing()">儲存筆記</button>
+    <div id="history">
+        <h3 style="font-size: 16px; font-weight: 500; border-left: 3px solid var(--muji-charcoal); padding-left: 10px; margin-bottom: 15px;">歷史紀錄 (即時同步)</h3>
+        <div id="recordList">正在連接雲端資料庫...</div>
     </div>
 
-    <div id="history-overlay">
-        <div class="history-content">
-            <span class="close-history" onclick="hideHistory()">&times;</span>
-            <h3 style="margin-top:0;">歷史筆記</h3>
-            <div id="recordList"></div>
-        </div>
-    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    <script>
+        // 已為您填入 singer-9d813 相關資訊
+        const firebaseConfig = {
+            apiKey: "AIzaSyDtTj8uoMK5l-XPDecE4Yyl_3IFCJB1SdQ",
+            authDomain: "singer-9d813.firebaseapp.com",
+            projectId: "singer-9d813",
+            storageBucket: "singer-9d813.appspot.com",
+            messagingSenderId: "550661805021",
+            appId: "1:550661805021:web:1f61bc3bada3e07dcd5c34"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const notesCol = collection(db, "handwriting_notes");
+
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
         const wrap = document.getElementById('canvas-wrap');
         const recordList = document.getElementById('recordList');
-        
         let isDrawing = false;
-        let currentMode = 'brush'; 
-        let currentColor = '#333333';
-        let editIndex = null;
+        let editDocId = null;
 
         function initCanvas() {
             canvas.width = wrap.clientWidth;
             canvas.height = wrap.clientHeight;
-            ctx.fillStyle = "white";
+            ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.strokeStyle = '#333'; ctx.fillStyle = "white";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            updateCtxStyle();
         }
 
-        function updateCtxStyle() {
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            if (currentMode === 'eraser') {
-                ctx.globalCompositeOperation = 'destination-out';
-                ctx.lineWidth = 20; // 橡皮擦粗一點比較好擦
-            } else {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.strokeStyle = currentColor;
-                ctx.lineWidth = 3;
-            }
-        }
-
-        function setTool(mode, color, el) {
-            currentMode = mode;
-            if (color) currentColor = color;
-            
-            // UI 反饋
-            document.querySelectorAll('.color-circle, .tool-btn').forEach(btn => btn.classList.remove('active'));
-            el.classList.add('active');
-            
-            updateCtxStyle();
-        }
-
-        // 繪圖邏輯
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -165,117 +82,7 @@
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
-        function startDrawing(e) {
-            isDrawing = true;
-            const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-            if(e.touches) e.preventDefault();
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            const pos = getPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-            if(e.touches) e.preventDefault();
-        }
-
-        canvas.addEventListener('touchstart', startDrawing, {passive: false});
-        canvas.addEventListener('touchmove', draw, {passive: false});
-        canvas.addEventListener('touchend', () => isDrawing = false);
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        window.addEventListener('mouseup', () => isDrawing = false);
-
-        function clearCanvas() {
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            updateCtxStyle();
-            editIndex = null;
-        }
-
-        function saveDrawing() {
-            // 儲存前強制轉成 source-over 以獲取正確的 dataURL
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = canvas.width;
-            tempCanvas.height = canvas.height;
-            const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.fillStyle = "white";
-            tempCtx.fillRect(0, 0, canvas.width, canvas.height);
-            tempCtx.drawImage(canvas, 0, 0);
-
-            const dataURL = tempCanvas.toDataURL("image/png");
-            const time = new Date().toLocaleString();
-            let saved = JSON.parse(localStorage.getItem('my_pro_notes') || '[]');
-
-            if (editIndex !== null) {
-                saved[editIndex] = { data: dataURL, time: time + " (修改)" };
-                editIndex = null;
-            } else {
-                saved.unshift({ data: dataURL, time: time });
-            }
-
-            localStorage.setItem('my_pro_notes', JSON.stringify(saved));
-            clearCanvas();
-            renderRecords();
-            alert("已儲存！");
-        }
-
-        function renderRecords() {
-            recordList.innerHTML = '';
-            const saved = JSON.parse(localStorage.getItem('my_pro_notes') || '[]');
-            saved.forEach((item, index) => {
-                const card = document.createElement('div');
-                card.className = 'record-card';
-                card.innerHTML = `
-                    <div style="font-size:12px; color:#888;">${item.time}</div>
-                    <img src="${item.data}">
-                    <div class="card-actions">
-                        <button class="action-link" onclick="exportImage('${item.data}')">輸出圖片</button>
-                        <button class="action-link" onclick="editRecord(${index})">編輯</button>
-                        <button class="action-link" style="color:red;" onclick="deleteRecord(${index})">刪除</button>
-                    </div>
-                `;
-                recordList.appendChild(card);
-            });
-        }
-
-        function showHistory() { 
-            renderRecords();
-            document.getElementById('history-overlay').style.display = 'block'; 
-        }
-        function hideHistory() { document.getElementById('history-overlay').style.display = 'none'; }
-
-        function editRecord(index) {
-            const saved = JSON.parse(localStorage.getItem('my_pro_notes') || '[]');
-            const img = new Image();
-            img.onload = () => {
-                clearCanvas();
-                ctx.drawImage(img, 0, 0);
-                editIndex = index;
-                hideHistory();
-            };
-            img.src = saved[index].data;
-        }
-
-        function deleteRecord(index) {
-            if(!confirm("確定刪除？")) return;
-            let saved = JSON.parse(localStorage.getItem('my_pro_notes') || '[]');
-            saved.splice(index, 1);
-            localStorage.setItem('my_pro_notes', JSON.stringify(saved));
-            renderRecords();
-        }
-
-        function exportImage(dataURL) {
-            const link = document.createElement('a');
-            link.href = dataURL;
-            link.download = `Note_${Date.now()}.png`;
-            link.click();
-        }
-
-        window.onload = initCanvas;
-    </script>
-</body>
-</html>
+        canvas.addEventListener('touchstart', (e) => { isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }, {passive: false});
+        canvas.addEventListener('touchmove', (e) => { if(!isDrawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }, {passive: false});
+        window.addEventListener('touchend', () => isDrawing = false);
+        canvas.addEventListener('mousedown', (e) => { isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
