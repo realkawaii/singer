@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>邱老師雲端隨手記 - 完美同步版</title>
+    <title>邱老師雲端手寫記事 - 綜合輸入版</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -12,6 +12,7 @@
             --muji-stone: #e0dbd5;
             --muji-white: #ffffff;
             --muji-red: #a52a2a;
+            --muji-blue: #007bff;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { 
@@ -20,44 +21,31 @@
             display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
 
-        /* 頂部導航與工具列 */
         .top-nav { background: var(--muji-white); border-bottom: 1px solid var(--muji-stone); z-index: 100; }
         .header { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; }
-        .toolbar { padding: 8px 15px; display: flex; gap: 8px; overflow-x: auto; border-top: 1px dotted #eee; }
+        .toolbar { padding: 8px 15px; display: flex; gap: 8px; overflow-x: auto; border-top: 1px dotted #eee; align-items: center; }
 
-        /* 內容區：電腦版會左右並排或上下排列 */
-        .main-content {
-            flex: 1; display: flex; flex-direction: column; overflow: hidden;
-        }
-        @media (min-width: 900px) {
-            .main-content { flex-direction: row; }
-        }
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        @media (min-width: 900px) { .main-content { flex-direction: row; } }
 
-        /* 畫布容器 */
-        #canvas-container {
-            flex: 2; position: relative; padding: 10px; display: flex; justify-content: center; align-items: center;
-            background: #eee; /* 背景灰色突顯畫布 */
-        }
-        #canvas-wrap {
-            width: 100%; height: 100%; max-width: 800px; /* 電腦版限制最大寬度 */
-            background: white; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            position: relative; overflow: hidden;
-        }
+        #canvas-container { flex: 2; position: relative; padding: 10px; display: flex; justify-content: center; align-items: center; background: #ddd; }
+        #canvas-wrap { width: 100%; height: 100%; max-width: 800px; background: white; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: relative; }
         canvas { display: block; touch-action: none; cursor: crosshair; }
 
-        /* 歷史紀錄區 */
-        #history {
-            flex: 1; background: var(--muji-beige); padding: 15px; overflow-y: auto;
-            border-left: 1px solid var(--muji-stone);
-        }
+        #history { flex: 1; background: var(--muji-beige); padding: 15px; overflow-y: auto; border-left: 1px solid var(--muji-stone); }
 
-        /* 按鈕與卡片樣式 */
-        .btn { border: 1px solid var(--muji-stone); background: white; padding: 6px 12px; border-radius: 2px; font-size: 13px; cursor: pointer; }
+        /* 按鈕樣式 */
+        .btn { border: 1px solid var(--muji-stone); background: white; padding: 6px 12px; border-radius: 2px; font-size: 13px; cursor: pointer; transition: 0.2s; }
         .btn-primary { background: var(--muji-charcoal); color: white; border: none; }
-        .btn.active { background: var(--muji-charcoal); color: white; }
+        .btn.active { background: var(--muji-charcoal); color: white !important; border-color: var(--muji-charcoal); }
+        
+        /* 顏色按鈕專用樣式 */
+        .color-btn { display: flex; align-items: center; gap: 5px; }
+        .color-dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
+
         .record-card { background: white; padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid var(--muji-stone); cursor: pointer; }
         .record-card img { width: 100%; height: auto; border-bottom: 1px solid #eee; margin-bottom: 5px; }
-        #edit-tag { display: none; background: #fff3cd; color: #856404; font-size: 12px; padding: 2px 8px; border-radius: 4px; margin-right: 10px; }
+        #edit-tag { display: none; background: #fff3cd; color: #856404; font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-right: 10px; }
     </style>
 </head>
 <body>
@@ -66,16 +54,18 @@
         <div class="header">
             <div style="display:flex; align-items:center;">
                 <span id="edit-tag">編輯中</span>
-                <h2 style="font-size: 16px; margin: 0;">雲端手寫隨手記</h2>
+                <h2 style="font-size: 16px; margin: 0;">雲端手寫與打字隨手記</h2>
             </div>
             <button onclick="saveToCloud()" id="saveBtn" class="btn btn-primary">儲存同步</button>
         </div>
         <div class="toolbar">
             <button class="btn active" id="penBtn" onclick="setTool('pen')">筆</button>
+            <button class="btn" id="textBtn" onclick="setTool('text')">打字</button>
             <button class="btn" id="eraserBtn" onclick="setTool('eraser')">橡皮擦</button>
-            <button class="btn" onclick="setColor('#333')">黑</button>
-            <button class="btn" onclick="setColor('#a52a2a')">紅</button>
-            <button class="btn" onclick="setColor('#007bff')">藍</button>
+            <div style="width: 1px; height: 20px; background: #ccc; margin: 0 5px;"></div>
+            <button class="btn color-btn active" id="color-#333" onclick="setColor('#333')"><div class="color-dot" style="background:#333"></div>黑</button>
+            <button class="btn color-btn" id="color-#a52a2a" onclick="setColor('#a52a2a')"><div class="color-dot" style="background:#a52a2a"></div>紅</button>
+            <button class="btn color-btn" id="color-#007bff" onclick="setColor('#007bff')"><div class="color-dot" style="background:#007bff"></div>藍</button>
             <button class="btn" onclick="resetCanvas()" style="margin-left:auto;">清空/取消</button>
         </div>
     </div>
@@ -86,9 +76,8 @@
                 <canvas id="mainCanvas"></canvas>
             </div>
         </div>
-
         <div id="history">
-            <b style="font-size: 13px; color: #888;">歷史紀錄 (點擊可顯現)</b>
+            <b style="font-size: 13px; color: #888;">歷史紀錄 (點擊可編輯)</b>
             <div id="recordList" style="margin-top:10px;">載入中...</div>
         </div>
     </div>
@@ -113,20 +102,20 @@
         const wrap = document.getElementById('canvas-wrap');
         const editTag = document.getElementById('edit-tag');
         let drawing = false;
-        let currentTool = 'pen';
+        let currentTool = 'pen'; // pen, text, eraser
         let currentColor = '#333';
         let editDocId = null;
 
         function initCanvas() {
-            // 修正電腦端顯示：強制讓內部解析度等於元素實際顯示大小
-            canvas.width = wrap.offsetWidth;
-            canvas.height = wrap.offsetHeight;
+            const rect = wrap.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.lineWidth = 3;
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.strokeStyle = (currentTool === 'eraser') ? 'white' : currentColor;
+            ctx.font = "20px 'Noto Sans TC'";
         }
 
         window.addEventListener('load', initCanvas);
@@ -134,7 +123,6 @@
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
-            // 關鍵修正：解決縮放後的座標換算問題
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
             return {
@@ -143,29 +131,78 @@
             };
         }
 
-        const start = (e) => { drawing = true; ctx.beginPath(); const p = getPos(e); ctx.moveTo(p.x, p.y); };
-        const move = (e) => { if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
-        const end = () => { drawing = false; };
+        // 繪圖與打字邏輯
+        canvas.addEventListener('mousedown', (e) => {
+            const p = getPos(e);
+            if (currentTool === 'text') {
+                const text = prompt("請輸入文字：");
+                if (text) {
+                    ctx.fillStyle = currentColor;
+                    ctx.fillText(text, p.x, p.y);
+                }
+            } else {
+                drawing = true;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+            }
+        });
 
-        canvas.addEventListener('mousedown', start);
-        canvas.addEventListener('mousemove', move);
-        window.addEventListener('mouseup', end);
-        canvas.addEventListener('touchstart', start, {passive: false});
-        canvas.addEventListener('touchmove', move, {passive: false});
-        canvas.addEventListener('touchend', end);
+        canvas.addEventListener('mousemove', (e) => {
+            if(!drawing || currentTool === 'text') return;
+            const p = getPos(e);
+            ctx.strokeStyle = (currentTool === 'eraser') ? 'white' : currentColor;
+            ctx.lineWidth = (currentTool === 'eraser') ? 30 : 3;
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+        });
+
+        window.addEventListener('mouseup', () => { drawing = false; });
+
+        // 手機觸控支援
+        canvas.addEventListener('touchstart', (e) => {
+            const p = getPos(e);
+            if (currentTool === 'text') {
+                const text = prompt("請輸入文字：");
+                if (text) {
+                    ctx.fillStyle = currentColor;
+                    ctx.fillText(text, p.x, p.y);
+                }
+            } else {
+                drawing = true;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+            }
+            e.preventDefault();
+        }, {passive: false});
+
+        canvas.addEventListener('touchmove', (e) => {
+            if(!drawing || currentTool === 'text') return;
+            const p = getPos(e);
+            ctx.strokeStyle = (currentTool === 'eraser') ? 'white' : currentColor;
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+            e.preventDefault();
+        }, {passive: false});
 
         window.setTool = (t) => {
             currentTool = t;
             document.getElementById('penBtn').classList.toggle('active', t === 'pen');
+            document.getElementById('textBtn').classList.toggle('active', t === 'text');
             document.getElementById('eraserBtn').classList.toggle('active', t === 'eraser');
-            ctx.strokeStyle = (t === 'eraser') ? 'white' : currentColor;
-            ctx.lineWidth = (t === 'eraser') ? 30 : 3;
         };
 
-        window.setColor = (c) => { currentColor = c; setTool('pen'); ctx.strokeStyle = c; };
+        window.setColor = (c) => {
+            currentColor = c;
+            // 移除所有顏色按鈕的 active 狀態
+            document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
+            // 為當前點擊的顏色按鈕加上 active
+            document.getElementById('color-' + c).classList.add('active');
+            
+            if (currentTool === 'eraser') setTool('pen');
+        };
 
         window.resetCanvas = () => {
-            if(confirm("確定清空？")) {
+            if(confirm("確定清空畫布？")) {
                 ctx.fillStyle = 'white';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 editDocId = null;
@@ -176,6 +213,7 @@
         window.saveToCloud = async () => {
             const btn = document.getElementById('saveBtn');
             btn.innerText = "同步中...";
+            btn.disabled = true;
             const dataURL = canvas.toDataURL("image/png");
             try {
                 if (editDocId) {
@@ -183,10 +221,12 @@
                 } else {
                     await db.collection("handwriting_notes").add({ data: dataURL, time: new Date().toLocaleString(), createdAt: Date.now() });
                 }
+                ctx.fillStyle = 'white';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 editDocId = null; editTag.style.display = 'none';
             } catch (e) { alert("儲存失敗"); }
             btn.innerText = "儲存同步";
+            btn.disabled = false;
         };
 
         db.collection("handwriting_notes").orderBy("createdAt", "desc").limit(10).onSnapshot((snapshot) => {
@@ -196,22 +236,20 @@
                 const item = doc.data();
                 const div = document.createElement('div');
                 div.className = 'record-card';
-                div.onclick = () => loadImg(doc.id, item.data);
+                div.onclick = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.fillStyle = 'white';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        editDocId = doc.id; editTag.style.display = 'inline-block';
+                    };
+                    img.src = item.data;
+                };
                 div.innerHTML = `<img src="${item.data}"><div style="font-size:11px;">${item.time} <span style="color:red;float:right;" onclick="event.stopPropagation(); deleteNote('${doc.id}')">刪除</span></div>`;
                 list.appendChild(div);
             });
         });
-
-        function loadImg(id, data) {
-            const img = new Image();
-            img.onload = () => {
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                // 修正圖片載入比例
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                editDocId = id; editTag.style.display = 'inline-block';
-            };
-            img.src = data;
-        }
 
         window.deleteNote = (id) => { if(confirm("確定刪除？")) db.collection("handwriting_notes").doc(id).delete(); };
     </script>
