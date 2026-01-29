@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>手寫隨手記 - 無印風</title>
+    <title>手寫記事 - 無印風</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -25,7 +25,6 @@
             height: 100vh;
         }
 
-        /* 頂部操作區 */
         .header {
             padding: 15px;
             background: var(--muji-white);
@@ -33,13 +32,13 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--muji-stone);
+            z-index: 10;
         }
 
         .header h2 { margin: 0; font-size: 18px; font-weight: 500; }
 
-        /* 全螢幕畫布容器 */
         #canvas-wrap {
-            flex: 1; /* 佔滿剩餘空間 */
+            flex: 1;
             position: relative;
             background: var(--muji-white);
             margin: 10px;
@@ -49,27 +48,27 @@
 
         canvas {
             display: block;
-            touch-action: none; /* 禁用瀏覽器預設手勢 */
+            touch-action: none;
+            background-color: #ffffff; /* 確保輸出時背景是白色 */
         }
 
-        /* 按鈕風格 */
         .btn-group { display: flex; gap: 8px; }
         button {
             border: 1px solid var(--muji-stone);
             background: var(--muji-white);
             color: var(--muji-charcoal);
-            padding: 8px 15px;
+            padding: 8px 12px;
             border-radius: 2px;
             font-size: 14px;
-            transition: all 0.2s;
+            cursor: pointer;
         }
         button.save { background: var(--muji-charcoal); color: var(--muji-white); border: none; }
         button:active { opacity: 0.6; }
 
-        /* 歷史紀錄區 */
         #history {
             padding: 15px;
             background: var(--muji-beige);
+            padding-bottom: 50px;
         }
 
         .record-card {
@@ -78,21 +77,39 @@
             margin-bottom: 12px;
             border-radius: 4px;
             display: flex;
-            align-items: center;
-            gap: 12px;
+            flex-direction: column;
+            gap: 10px;
             border: 1px solid var(--muji-stone);
         }
 
-        .record-card img {
-            width: 80px;
-            height: auto;
-            border: 1px solid var(--muji-beige);
-            background: #fafafa;
+        .record-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        .info { flex: 1; font-size: 13px; }
-        .edit-btn { color: #556b2f; border: none; background: none; text-decoration: underline; padding: 5px; }
-        .del-btn { color: #a52a2a; border: none; background: none; text-decoration: underline; padding: 5px; }
+        .record-card img {
+            width: 100px;
+            height: auto;
+            border: 1px solid var(--muji-beige);
+            background: #fff;
+        }
+
+        .info { flex: 1; }
+        .time-label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; }
+        
+        .card-actions {
+            border-top: 1px solid var(--muji-beige);
+            padding-top: 8px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .action-link { font-size: 13px; text-decoration: underline; background: none; border: none; padding: 0; cursor: pointer; }
+        .edit-link { color: #556b2f; }
+        .del-link { color: #a52a2a; }
+        .download-link { color: #007bff; }
     </style>
 </head>
 <body>
@@ -110,7 +127,7 @@
     </div>
 
     <div id="history">
-        <h3 style="font-size: 16px; font-weight: 500;">歷史紀錄</h3>
+        <h3 style="font-size: 16px; font-weight: 500; border-left: 3px solid var(--muji-charcoal); padding-left: 10px;">歷史紀錄</h3>
         <div id="recordList"></div>
     </div>
 
@@ -123,31 +140,36 @@
         let isDrawing = false;
         let editIndex = null;
 
-        // 設定畫布大小為容器大小（全螢幕感）
         function resizeCanvas() {
+            // 暫存目前的畫布內容
+            const tempImage = canvas.toDataURL();
             canvas.width = wrap.clientWidth;
             canvas.height = wrap.clientHeight;
-            // 重新初始化畫布樣式
+            
+            // 重新設定樣式
             ctx.lineWidth = 3;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.strokeStyle = '#333';
+            
+            // 如果是在編輯中或原本有東西，繪製回白色背景
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 載入回之前的圖案（若有）
+            const img = new Image();
+            img.onload = () => ctx.drawImage(img, 0, 0);
+            img.src = tempImage;
         }
 
-        window.addEventListener('load', () => {
-            resizeCanvas();
-            renderRecords();
-        });
+        window.addEventListener('load', resizeCanvas);
+        window.addEventListener('resize', resizeCanvas);
 
-        // 繪圖邏輯
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return {
-                x: clientX - rect.left,
-                y: clientY - rect.top
-            };
+            return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
         function startDrawing(e) {
@@ -155,7 +177,7 @@
             const pos = getPos(e);
             ctx.beginPath();
             ctx.moveTo(pos.x, pos.y);
-            e.preventDefault();
+            if(e.touches) e.preventDefault();
         }
 
         function draw(e) {
@@ -163,76 +185,104 @@
             const pos = getPos(e);
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
-            e.preventDefault();
+            if(e.touches) e.preventDefault();
         }
 
         function stopDrawing() { isDrawing = false; }
 
+        canvas.addEventListener('touchstart', startDrawing, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDrawing);
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mousemove', draw);
         window.addEventListener('mouseup', stopDrawing);
 
-        canvas.addEventListener('touchstart', startDrawing, {passive: false});
-        canvas.addEventListener('touchmove', draw, {passive: false});
-        canvas.addEventListener('touchend', stopDrawing);
-
         function clearCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             editIndex = null;
         }
 
         function saveDrawing() {
-            const dataURL = canvas.toDataURL();
-            let saved = JSON.parse(localStorage.getItem('my_drawings') || '[]');
+            const dataURL = canvas.toDataURL("image/png");
+            const now = new Date();
+            const timeString = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+            
+            let saved = JSON.parse(localStorage.getItem('my_drawings_v2') || '[]');
 
             if (editIndex !== null) {
-                saved[editIndex] = dataURL;
+                saved[editIndex].data = dataURL;
+                saved[editIndex].time = timeString + " (已編輯)";
                 editIndex = null;
             } else {
-                saved.unshift(dataURL); // 最新存放在最前面
+                saved.unshift({ data: dataURL, time: timeString });
             }
 
-            localStorage.setItem('my_drawings', JSON.stringify(saved));
+            localStorage.setItem('my_drawings_v2', JSON.stringify(saved));
             clearCanvas();
             renderRecords();
         }
 
         function renderRecords() {
             recordList.innerHTML = '';
-            const saved = JSON.parse(localStorage.getItem('my_drawings') || '[]');
+            const saved = JSON.parse(localStorage.getItem('my_drawings_v2') || '[]');
 
-            saved.forEach((data, index) => {
+            saved.forEach((item, index) => {
                 const card = document.createElement('div');
                 card.className = 'record-card';
                 card.innerHTML = `
-                    <img src="${data}">
-                    <div class="info">紀錄 #${saved.length - index}</div>
-                    <button class="edit-btn" onclick="editRecord(${index})">編輯</button>
-                    <button class="del-btn" onclick="deleteRecord(${index})">刪除</button>
+                    <div class="record-content">
+                        <img src="${item.data}">
+                        <div class="info">
+                            <span class="time-label">${item.time}</span>
+                            <div style="font-size: 14px;">手寫紀錄</div>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <button class="action-link download-link" onclick="exportImage('${item.data}', '${item.time}')">輸出圖片</button>
+                        <button class="action-link edit-link" onclick="editRecord(${index})">編輯</button>
+                        <button class="action-link del-link" onclick="deleteRecord(${index})">刪除</button>
+                    </div>
                 `;
                 recordList.appendChild(card);
             });
         }
 
+        // 輸出並儲存圖片
+        function exportImage(dataURL, time) {
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = `手寫紀錄_${time.replace(/[\/ :]/g, '_')}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // 針對某些行動裝置瀏覽器的提示
+            alert("圖片已嘗試輸出。若未自動下載，請在開啟的圖片上長按並選擇「儲存圖片」。");
+        }
+
         function deleteRecord(index) {
-            if(!confirm("確定要刪除嗎？")) return;
-            let saved = JSON.parse(localStorage.getItem('my_drawings') || '[]');
+            if(!confirm("確定要刪除這份紀錄嗎？")) return;
+            let saved = JSON.parse(localStorage.getItem('my_drawings_v2') || '[]');
             saved.splice(index, 1);
-            localStorage.setItem('my_drawings', JSON.stringify(saved));
+            localStorage.setItem('my_drawings_v2', JSON.stringify(saved));
             renderRecords();
         }
 
         function editRecord(index) {
-            const saved = JSON.parse(localStorage.getItem('my_drawings') || '[]');
+            const saved = JSON.parse(localStorage.getItem('my_drawings_v2') || '[]');
             const img = new Image();
             img.onload = function() {
                 clearCanvas();
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
                 editIndex = index;
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             };
-            img.src = saved[index];
+            img.src = saved[index].data;
         }
+
+        // 初始化
+        renderRecords();
     </script>
 </body>
 </html>
