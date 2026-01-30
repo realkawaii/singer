@@ -3,58 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>隨手記 - 自由手寫版</title>
+    <title>隨手記 - 編輯強化版</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        :root { --muji-beige: #f5f3f0; --muji-charcoal: #333333; --muji-stone: #e0dbd5; --muji-white: #ffffff; --muji-red: #a52a2a; }
+        :root { --muji-beige: #f5f3f0; --muji-charcoal: #333333; --muji-stone: #e0dbd5; --muji-white: #ffffff; --muji-red: #a52a2a; --muji-blue: #007bff; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; font-family: 'Noto Sans TC', sans-serif; background: var(--muji-beige); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
+        /* UI 佈局 */
         .header { padding: 10px 15px; background: var(--muji-white); border-bottom: 1px solid var(--muji-stone); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
         .toolbar { padding: 8px 15px; display: flex; gap: 8px; align-items: center; background: var(--muji-white); border-bottom: 1px solid var(--muji-stone); overflow-x: auto; white-space: nowrap; }
         
         .main-content { flex: 1; position: relative; overflow: hidden; background: #ccc; }
-        /* 畫布容器：允許內部畫布移動 */
         #canvas-viewport { width: 100%; height: 100%; overflow: hidden; position: relative; }
         #canvas-wrap { 
-            position: absolute; 
-            top: 0; left: 0; 
-            width: 2000px; height: 2000px; /* 給予極大的虛擬空間 */
-            background: white; 
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-            cursor: crosshair;
-            transform-origin: 0 0;
+            position: absolute; top: 0; left: 0; width: 2000px; height: 2000px; 
+            background: white; box-shadow: 0 0 20px rgba(0,0,0,0.2); transform-origin: 0 0;
         }
         canvas { display: block; touch-action: none; }
 
+        /* 側邊紀錄欄 */
         #history { 
-            position: absolute; right: 0; top: 0; bottom: 0; width: 280px; 
+            position: absolute; right: 0; top: 0; bottom: 0; width: 300px; 
             background: var(--muji-white); border-left: 1px solid var(--muji-stone); 
             transform: translateX(100%); transition: transform 0.3s ease; 
-            z-index: 20; padding: 15px; overflow-y: auto; box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            z-index: 20; padding: 15px; overflow-y: auto; box-shadow: -5px 0 15px rgba(0,0,0,0.1);
         }
         #history.show { transform: translateX(0); }
 
+        /* 按鈕與元件 */
         .btn { border: 1px solid var(--muji-stone); background: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; }
         .btn.active { background: var(--muji-charcoal); color: white; }
         .btn-primary { background: var(--muji-charcoal); color: white; border: none; }
-        .eraser-size-panel { display: none; align-items: center; gap: 8px; background: #f0f0f0; padding: 0 10px; border-radius: 4px; height: 35px; }
+        .btn-danger { color: var(--muji-red); border: 1px solid var(--muji-red); background: white; padding: 4px 8px; font-size: 12px; }
+        .btn-edit { color: var(--muji-blue); border: 1px solid var(--muji-blue); background: white; padding: 4px 8px; font-size: 12px; margin-right: 5px; }
 
-        .record-card { background: white; padding: 10px; border-radius: 4px; margin-bottom: 12px; border: 1px solid var(--muji-stone); cursor: pointer; }
-        .record-card img { width: 100%; height: auto; border: 1px solid #eee; }
+        /* 紀錄卡片 */
+        .record-card { background: #fafafa; padding: 10px; border-radius: 4px; margin-bottom: 15px; border: 1px solid var(--muji-stone); }
+        .record-card img { width: 100%; height: auto; border: 1px solid #eee; margin-bottom: 8px; background: white; }
+        .record-info { display: flex; justify-content: space-between; align-items: center; }
+        .record-time { font-size: 11px; color: #888; }
 
         #text-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; }
-        #modal-textarea { width: 100%; height: 120px; font-size: 18px; padding: 10px; }
     </style>
 </head>
 <body>
 
     <div id="text-modal">
         <div class="modal-content">
-            <h3>打字輸入</h3>
-            <textarea id="modal-textarea"></textarea>
-            <div style="display:flex; gap:10px; justify-content: flex-end; margin-top:10px;">
+            <h3 style="margin:0 0 10px 0;">輸入文字</h3>
+            <textarea id="modal-textarea" style="width:100%; height:120px; padding:10px; font-size:18px;"></textarea>
+            <div style="display:flex; gap:10px; justify-content: flex-end; margin-top:15px;">
                 <button class="btn" onclick="closeModal()">取消</button>
                 <button class="btn btn-primary" onclick="confirmText()">置入畫布</button>
             </div>
@@ -62,7 +62,7 @@
     </div>
 
     <div class="header">
-        <h2 style="margin:0; font-size: 18px;">隨手記 <span id="edit-tag" style="display:none; color: var(--muji-red); font-size: 12px;">(編輯中)</span></h2>
+        <h2 style="margin:0; font-size: 18px;">隨手記 <span id="edit-tag" style="display:none; color: var(--muji-red); font-size: 13px; margin-left:10px;">● 編輯中</span></h2>
         <div style="display:flex; gap:8px;">
             <button class="btn" onclick="toggleHistory()">已儲存紀錄</button>
             <button class="btn btn-primary" onclick="saveToCloud()" id="saveBtn">儲存同步</button>
@@ -73,14 +73,15 @@
         <button class="btn active" id="penBtn" onclick="setTool('pen')">畫筆</button>
         <button class="btn" id="textBtn" onclick="setTool('text')">打字</button>
         <button class="btn" id="eraserBtn" onclick="setTool('eraser')">橡皮擦</button>
-        <div id="eraserControl" class="eraser-size-panel">
+        <div id="eraserControl" style="display:none; align-items:center; gap:5px; background:#eee; padding:5px 10px; border-radius:4px;">
+            <span style="font-size:12px;">大小:</span>
             <input type="range" id="eraserSize" min="10" max="100" value="30">
         </div>
         <div style="width:1px; height:20px; background:var(--muji-stone);"></div>
         <button class="btn color-btn active" id="color-#333" onclick="setColor('#333')">黑</button>
         <button class="btn color-btn" id="color-#a52a2a" onclick="setColor('#a52a2a')">紅</button>
         <button class="btn color-btn" id="color-#007bff" onclick="setColor('#007bff')">藍</button>
-        <button class="btn" onclick="resetCanvas()" style="margin-left:auto;">清空</button>
+        <button class="btn" onclick="resetCanvas()" style="margin-left:auto;">新畫布</button>
     </div>
 
     <div class="main-content">
@@ -89,9 +90,9 @@
         </div>
         
         <div id="history">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                <b>歷史紀錄</b>
-                <button class="btn" style="padding:2px 8px;" onclick="toggleHistory()">關閉</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                <b style="font-size:16px;">雲端筆記清單</b>
+                <button class="btn" style="padding:4px 8px;" onclick="toggleHistory()">關閉</button>
             </div>
             <div id="recordList"></div>
         </div>
@@ -124,12 +125,12 @@
         let editDocId = null;
         let lastTouchPos = null;
         
-        // 拖曳相關變數
+        // 畫布位置偏移
         let offsetX = 0, offsetY = 0;
         let startX = 0, startY = 0;
 
         function initCanvas() {
-            canvas.width = 2000;  // 固定大尺寸
+            canvas.width = 2000;
             canvas.height = 2000;
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -147,10 +148,10 @@
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: (clientX - rect.left), y: (clientY - rect.top) };
+            return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
-        // 事件監聽
+        // 手勢與觸控處理
         canvas.addEventListener('touchstart', (e) => {
             if (e.touches.length === 2) {
                 isPanning = true;
@@ -158,13 +159,13 @@
                 startX = e.touches[0].clientX - offsetX;
                 startY = e.touches[0].clientY - offsetY;
             } else if (e.touches.length === 1) {
+                const p = getPos(e);
                 if (currentTool === 'text') {
-                    lastTouchPos = getPos(e);
+                    lastTouchPos = p;
                     openModal("");
                 } else {
                     isPanning = false;
                     drawing = true;
-                    const p = getPos(e);
                     ctx.beginPath();
                     ctx.moveTo(p.x, p.y);
                 }
@@ -188,7 +189,7 @@
 
         canvas.addEventListener('touchend', () => { drawing = false; isPanning = false; });
 
-        // 工具控制
+        // 工具切換
         window.setTool = (t) => {
             currentTool = t;
             document.querySelectorAll('.toolbar .btn').forEach(b => b.classList.remove('active'));
@@ -211,20 +212,21 @@
             const txt = document.getElementById('modal-textarea').value;
             if(txt && lastTouchPos) {
                 ctx.fillStyle = currentColor;
-                ctx.font = "20px 'Noto Sans TC'";
-                txt.split('\n').forEach((line, i) => ctx.fillText(line, lastTouchPos.x, lastTouchPos.y + (i * 28)));
+                ctx.font = "24px 'Noto Sans TC'";
+                txt.split('\n').forEach((line, i) => ctx.fillText(line, lastTouchPos.x, lastTouchPos.y + (i * 32)));
             }
             closeModal();
         };
 
         window.resetCanvas = () => {
-            if(confirm("確定清空？")) {
+            if(confirm("確定開啟新畫布？目前的編輯將會被取消。")) {
                 ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
                 editDocId = null; document.getElementById('edit-tag').style.display = 'none';
                 offsetX = 0; offsetY = 0; updateTransform();
             }
         };
 
+        // 雲端功能：儲存/更新
         window.saveToCloud = async () => {
             const btn = document.getElementById('saveBtn');
             btn.innerText = "同步中...";
@@ -232,33 +234,63 @@
             try {
                 if (editDocId) {
                     await db.collection("handwriting_notes").doc(editDocId).update({ data: dataURL, time: new Date().toLocaleString() });
+                    alert("更新成功！");
                 } else {
                     await db.collection("handwriting_notes").add({ data: dataURL, time: new Date().toLocaleString(), createdAt: Date.now() });
+                    alert("已存為新紀錄");
                 }
-                alert("儲存成功");
-            } catch (e) { alert("失敗"); }
+            } catch (e) { alert("儲存失敗"); }
             btn.innerText = "儲存同步";
         };
 
-        db.collection("handwriting_notes").orderBy("createdAt", "desc").limit(10).onSnapshot((snapshot) => {
+        // 雲端功能：載入編輯
+        window.loadForEdit = (id, dataURL) => {
+            const img = new Image();
+            img.onload = () => {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+                editDocId = id;
+                document.getElementById('edit-tag').style.display = 'inline';
+                offsetX = 0; offsetY = 0; updateTransform();
+                toggleHistory(); // 自動關閉清單
+                alert("已載入，您可以開始編輯。");
+            };
+            img.src = dataURL;
+        };
+
+        // 雲端功能：刪除
+        window.deleteNote = async (id) => {
+            if(confirm("確定要永久刪除這筆紀錄嗎？")) {
+                try {
+                    await db.collection("handwriting_notes").doc(id).delete();
+                    if(editDocId === id) {
+                        editDocId = null;
+                        document.getElementById('edit-tag').style.display = 'none';
+                    }
+                } catch (e) { alert("刪除失敗"); }
+            }
+        };
+
+        // 即時監聽雲端資料
+        db.collection("handwriting_notes").orderBy("createdAt", "desc").limit(15).onSnapshot((snapshot) => {
             const list = document.getElementById('recordList');
             list.innerHTML = '';
             snapshot.forEach((doc) => {
                 const item = doc.data();
-                const div = document.createElement('div');
-                div.className = 'record-card';
-                div.innerHTML = `<img src="${item.data}"><div style="font-size:11px;">${item.time}</div>`;
-                div.onclick = () => {
-                    const img = new Image();
-                    img.onload = () => {
-                        ctx.drawImage(img, 0, 0);
-                        editDocId = doc.id;
-                        document.getElementById('edit-tag').style.display = 'inline';
-                        toggleHistory();
-                    };
-                    img.src = item.data;
-                };
-                list.appendChild(div);
+                const card = document.createElement('div');
+                card.className = 'record-card';
+                card.innerHTML = `
+                    <img src="${item.data}">
+                    <div class="record-info">
+                        <span class="record-time">${item.time}</span>
+                        <div>
+                            <button class="btn-edit" onclick="loadForEdit('${doc.id}', '${item.data}')">編輯</button>
+                            <button class="btn-danger" onclick="deleteNote('${doc.id}')">刪除</button>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(card);
             });
         });
 
