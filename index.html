@@ -3,83 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>邱老師雲端隨手記 - 進階打字版</title>
+    <title>邱老師雲端隨手記 - 專業手寫版</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        :root { --muji-beige: #f5f3f0; --muji-charcoal: #333333; --muji-stone: #e0dbd5; --muji-white: #ffffff; }
-        * { box-sizing: border-box; }
+        :root { --muji-beige: #f5f3f0; --muji-charcoal: #333333; --muji-stone: #e0dbd5; --muji-white: #ffffff; --muji-red: #a52a2a; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; font-family: 'Noto Sans TC', sans-serif; background: var(--muji-beige); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        .header { padding: 10px 15px; background: var(--muji-white); border-bottom: 1px solid var(--muji-stone); display: flex; justify-content: space-between; align-items: center; }
-        .toolbar { padding: 8px 15px; display: flex; gap: 8px; background: var(--muji-white); border-bottom: 1px solid var(--muji-stone); overflow-x: auto; }
+        /* Header & Toolbar */
+        .header { padding: 10px 15px; background: var(--muji-white); border-bottom: 1px solid var(--muji-stone); display: flex; justify-content: space-between; align-items: center; z-index: 10; }
+        .toolbar { padding: 8px 15px; display: flex; gap: 8px; align-items: center; background: var(--muji-white); border-bottom: 1px solid var(--muji-stone); overflow-x: auto; white-space: nowrap; }
         
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        @media (min-width: 900px) { .main-content { flex-direction: row; } }
+        /* Main Layout */
+        .main-content { flex: 1; position: relative; display: flex; overflow: hidden; }
+        #canvas-container { flex: 1; padding: 5px; background: #ddd; display: flex; justify-content: center; }
+        #canvas-wrap { width: 100%; height: 100%; background: white; position: relative; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        canvas { display: block; touch-action: none; cursor: crosshair; }
 
-        #canvas-container { flex: 2; padding: 10px; display: flex; justify-content: center; align-items: center; background: #ddd; }
-        #canvas-wrap { width: 100%; height: 100%; max-width: 800px; background: white; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        canvas { display: block; touch-action: none; width: 100%; height: 100%; }
+        /* Sidebar History (Floating Overlay) */
+        #history { 
+            position: absolute; right: 0; top: 0; bottom: 0; width: 280px; 
+            background: var(--muji-white); border-left: 1px solid var(--muji-stone); 
+            transform: translateX(100%); transition: transform 0.3s ease; 
+            z-index: 20; padding: 15px; overflow-y: auto; box-shadow: -2px 0 10px rgba(0,0,0,0.05);
+        }
+        #history.show { transform: translateX(0); }
 
-        #history { flex: 1; background: var(--muji-beige); padding: 15px; overflow-y: auto; border-left: 1px solid var(--muji-stone); }
-        
-        .btn { border: 1px solid var(--muji-stone); background: white; padding: 8px 15px; border-radius: 2px; cursor: pointer; font-size: 14px; }
-        .btn.active { background: var(--muji-charcoal); color: white; }
+        /* Components */
+        .btn { border: 1px solid var(--muji-stone); background: white; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .btn.active { background: var(--muji-charcoal); color: white; border-color: var(--muji-charcoal); }
         .btn-primary { background: var(--muji-charcoal); color: white; border: none; }
-
-        /* 打字輸入視窗 */
-        #text-modal { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; 
-        }
-        .modal-content { 
-            background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
-        }
-        #modal-textarea { width: 100%; height: 150px; font-size: 18px; padding: 10px; border: 1px solid #ddd; margin-bottom: 15px; font-family: inherit; }
+        .btn-accent { background: var(--muji-red); color: white; border: none; }
         
-        .record-card { background: white; padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid var(--muji-stone); cursor: pointer; }
-        .record-card img { width: 100%; border-bottom: 1px solid #eee; margin-bottom: 5px; }
+        .eraser-size-panel { display: none; align-items: center; gap: 8px; background: #f0f0f0; padding: 0 10px; border-radius: 4px; height: 35px; }
+
+        .record-card { background: white; padding: 10px; border-radius: 4px; margin-bottom: 12px; border: 1px solid var(--muji-stone); cursor: pointer; position: relative; }
+        .record-card:hover { border-color: #999; }
+        .record-card img { width: 100%; height: auto; border: 1px solid #eee; margin-bottom: 5px; }
+        .delete-btn { color: var(--muji-red); font-size: 12px; float: right; padding: 2px 5px; }
+
+        /* Modal */
+        #text-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; }
+        #modal-textarea { width: 100%; height: 120px; font-size: 18px; padding: 10px; border: 1px solid #ddd; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
     <div id="text-modal">
         <div class="modal-content">
-            <h3 style="margin-top:0;">輸入內容</h3>
-            <textarea id="modal-textarea" placeholder="請在此輸入文字..."></textarea>
+            <h3 style="margin-top:0;">打字輸入</h3>
+            <textarea id="modal-textarea" placeholder="請在此輸入內容..."></textarea>
             <div style="display:flex; gap:10px; justify-content: flex-end;">
                 <button class="btn" onclick="closeModal()">取消</button>
-                <button class="btn btn-primary" onclick="confirmText()">確定放入畫布</button>
+                <button class="btn btn-primary" onclick="confirmText()">置入畫布</button>
             </div>
         </div>
     </div>
 
     <div class="header">
         <div style="display:flex; align-items:center;">
-            <span id="edit-tag" style="display:none; color: brown; font-weight: bold; margin-right: 10px;">[編輯中]</span>
-            <h2 style="margin:0; font-size: 18px;">邱老師雲端隨手記</h2>
+            <h2 style="margin:0; font-size: 18px;">邱老師隨手記 <span id="edit-tag" style="display:none; color: var(--muji-red); font-size: 12px;">(編輯中)</span></h2>
         </div>
-        <button class="btn btn-primary" onclick="saveToCloud()" id="saveBtn">儲存同步</button>
+        <div style="display:flex; gap:8px;">
+            <button class="btn" id="toggleHistory" onclick="toggleHistory()">已儲存紀錄</button>
+            <button class="btn btn-primary" onclick="saveToCloud()" id="saveBtn">儲存同步</button>
+        </div>
     </div>
 
     <div class="toolbar">
-        <button class="btn active" id="penBtn" onclick="setTool('pen')">筆</button>
-        <button class="btn" id="textBtn" onclick="setTool('text')">打字編輯</button>
+        <button class="btn active" id="penBtn" onclick="setTool('pen')">畫筆</button>
+        <button class="btn" id="textBtn" onclick="setTool('text')">打字</button>
         <button class="btn" id="eraserBtn" onclick="setTool('eraser')">橡皮擦</button>
-        <div style="width:2px; height:20px; background:#eee;"></div>
+        
+        <div id="eraserControl" class="eraser-size-panel">
+            <span style="font-size: 12px;">大小:</span>
+            <input type="range" id="eraserSize" min="10" max="100" value="30">
+        </div>
+
+        <div style="width:1px; height:20px; background:var(--muji-stone); margin: 0 5px;"></div>
+        
         <button class="btn color-btn active" id="color-#333" onclick="setColor('#333')">黑</button>
         <button class="btn color-btn" id="color-#a52a2a" onclick="setColor('#a52a2a')">紅</button>
         <button class="btn color-btn" id="color-#007bff" onclick="setColor('#007bff')">藍</button>
-        <button class="btn" onclick="resetCanvas()" style="margin-left:auto;">清空/取消</button>
+        
+        <button class="btn" onclick="resetCanvas()" style="margin-left:auto;">清空</button>
     </div>
 
     <div class="main-content">
         <div id="canvas-container">
             <div id="canvas-wrap"><canvas id="mainCanvas"></canvas></div>
         </div>
+        
         <div id="history">
-            <b style="color:#888;">歷史紀錄</b>
-            <div id="recordList" style="margin-top:10px;"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <b style="color:#555;">歷史紀錄</b>
+                <button class="btn" style="padding:2px 8px;" onclick="toggleHistory()">關閉</button>
+            </div>
+            <div id="recordList"></div>
         </div>
     </div>
 
@@ -103,24 +124,36 @@
         const wrap = document.getElementById('canvas-wrap');
         const modal = document.getElementById('text-modal');
         const textarea = document.getElementById('modal-textarea');
+        const eraserSizeInput = document.getElementById('eraserSize');
         
         let drawing = false;
         let currentTool = 'pen';
         let currentColor = '#333';
         let editDocId = null;
         let lastTouchPos = null;
-        let historyObjects = []; // 紀錄打字物件以供編輯
 
         function initCanvas() {
-            canvas.width = wrap.offsetWidth;
-            canvas.height = wrap.offsetHeight;
+            const rect = wrap.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
             ctx.lineWidth = 3;
         }
+
         window.onload = initCanvas;
-        window.onresize = initCanvas;
+        window.onresize = () => {
+            // 縮放時保存內容
+            const temp = canvas.toDataURL();
+            const img = new Image();
+            img.onload = () => {
+                initCanvas();
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = temp;
+        };
 
         function getPos(e) {
             const rect = canvas.getBoundingClientRect();
@@ -129,78 +162,42 @@
             return { x: cx - rect.left, y: cy - rect.top };
         }
 
-        // --- 自動換行繪製文字邏輯 ---
-        function wrapText(text, x, y, maxWidth, lineHeight) {
-            const lines = text.split('\n');
-            ctx.fillStyle = currentColor;
-            ctx.font = "20px 'Noto Sans TC'";
-            
-            let currentY = y;
-            lines.forEach(line => {
-                let words = line.split('');
-                let currentLine = '';
-                for(let n = 0; n < words.length; n++) {
-                    let testLine = currentLine + words[n];
-                    let metrics = ctx.measureText(testLine);
-                    if (metrics.width > maxWidth && n > 0) {
-                        ctx.fillText(currentLine, x, currentY);
-                        currentLine = words[n];
-                        currentY += lineHeight;
-                    } else {
-                        currentLine = testLine;
-                    }
-                }
-                ctx.fillText(currentLine, x, currentY);
-                currentY += lineHeight;
-            });
-        }
-
-        canvas.addEventListener('mousedown', (e) => {
-            const p = getPos(e);
-            if (currentTool === 'text') {
-                lastTouchPos = p;
-                openModal(""); 
-            } else {
-                drawing = true;
-                ctx.beginPath(); ctx.moveTo(p.x, p.y);
-            }
-        });
-
-        canvas.addEventListener('mousemove', (e) => {
-            if(!drawing || currentTool === 'text') return;
-            const p = getPos(e);
-            ctx.strokeStyle = (currentTool === 'eraser') ? 'white' : currentColor;
-            ctx.lineWidth = (currentTool === 'eraser') ? 30 : 3;
-            ctx.lineTo(p.x, p.y); ctx.stroke();
-        });
-
-        window.addEventListener('mouseup', () => drawing = false);
-
-        // 觸控支援
-        canvas.addEventListener('touchstart', (e) => {
+        function startDrawing(e) {
             const p = getPos(e);
             if (currentTool === 'text') {
                 lastTouchPos = p;
                 openModal("");
-            } else {
-                drawing = true;
-                ctx.beginPath(); ctx.moveTo(p.x, p.y);
+                return;
             }
-            e.preventDefault();
-        }, {passive: false});
+            drawing = true;
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+        }
 
-        canvas.addEventListener('touchmove', (e) => {
-            if(!drawing || currentTool === 'text') return;
+        function draw(e) {
+            if (!drawing || currentTool === 'text') return;
             const p = getPos(e);
             ctx.strokeStyle = (currentTool === 'eraser') ? 'white' : currentColor;
-            ctx.lineTo(p.x, p.y); ctx.stroke();
+            ctx.lineWidth = (currentTool === 'eraser') ? eraserSizeInput.value : 3;
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
             e.preventDefault();
-        }, {passive: false});
+        }
+
+        function stopDrawing() { drawing = false; }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        window.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDrawing);
 
         window.setTool = (t) => {
             currentTool = t;
             document.querySelectorAll('.toolbar .btn').forEach(b => b.classList.remove('active'));
             document.getElementById(t + 'Btn').classList.add('active');
+            document.getElementById('eraserControl').style.display = (t === 'eraser') ? 'flex' : 'none';
         };
 
         window.setColor = (c) => {
@@ -210,59 +207,109 @@
             if(currentTool === 'eraser') setTool('pen');
         };
 
+        window.toggleHistory = () => {
+            document.getElementById('history').classList.toggle('show');
+        };
+
         window.openModal = (val) => { textarea.value = val; modal.style.display = 'flex'; textarea.focus(); };
         window.closeModal = () => { modal.style.display = 'none'; };
         
         window.confirmText = () => {
             const txt = textarea.value;
             if(txt && lastTouchPos) {
-                wrapText(txt, lastTouchPos.x, lastTouchPos.y, canvas.width - lastTouchPos.x - 20, 28);
+                ctx.fillStyle = currentColor;
+                ctx.font = "20px 'Noto Sans TC'";
+                const lines = txt.split('\n');
+                lines.forEach((line, i) => {
+                    ctx.fillText(line, lastTouchPos.x, lastTouchPos.y + (i * 28));
+                });
             }
             closeModal();
         };
 
         window.resetCanvas = () => {
-            if(confirm("確定清空畫布與取消編輯？")) {
-                ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                editDocId = null; document.getElementById('edit-tag').style.display = 'none';
+            if(confirm("確定清空畫布？")) {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                editDocId = null;
+                document.getElementById('edit-tag').style.display = 'none';
             }
         };
 
         window.saveToCloud = async () => {
             const btn = document.getElementById('saveBtn');
+            const originalText = btn.innerText;
             btn.innerText = "同步中...";
+            btn.disabled = true;
+
             const dataURL = canvas.toDataURL("image/png");
             try {
+                const noteData = {
+                    data: dataURL,
+                    time: new Date().toLocaleString('zh-TW', {hour12:false}),
+                    createdAt: Date.now()
+                };
+
                 if (editDocId) {
-                    await db.collection("handwriting_notes").doc(editDocId).update({ data: dataURL, time: new Date().toLocaleString() });
+                    await db.collection("handwriting_notes").doc(editDocId).update(noteData);
                 } else {
-                    await db.collection("handwriting_notes").add({ data: dataURL, time: new Date().toLocaleString(), createdAt: Date.now() });
+                    await db.collection("handwriting_notes").add(noteData);
                 }
-                resetCanvas();
-            } catch (e) { alert("儲存失敗"); }
-            btn.innerText = "儲存同步";
+                alert("儲存成功！");
+                if(!editDocId) {
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+            } catch (e) { alert("儲存失敗: " + e); }
+            
+            btn.innerText = originalText;
+            btn.disabled = false;
         };
 
-        db.collection("handwriting_notes").orderBy("createdAt", "desc").limit(10).onSnapshot((snapshot) => {
+        // 監聽雲端資料
+        db.collection("handwriting_notes").orderBy("createdAt", "desc").limit(15).onSnapshot((snapshot) => {
             const list = document.getElementById('recordList');
             list.innerHTML = '';
             snapshot.forEach((doc) => {
                 const item = doc.data();
                 const div = document.createElement('div');
                 div.className = 'record-card';
-                div.onclick = () => {
-                    const img = new Image();
-                    img.onload = () => {
-                        ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        editDocId = doc.id; document.getElementById('edit-tag').style.display = 'inline-block';
-                    };
-                    img.src = item.data;
-                };
-                div.innerHTML = `<img src="${item.data}"><div style="font-size:11px;">${item.time} <span style="color:red;float:right;" onclick="event.stopPropagation(); if(confirm('刪除？')) db.collection('handwriting_notes').doc('${doc.id}').delete();">刪除</span></div>`;
+                div.innerHTML = `
+                    <img src="${item.data}">
+                    <div style="font-size:11px; color:#888;">
+                        ${item.time}
+                        <span class="delete-btn" onclick="deleteNote(event, '${doc.id}')">刪除</span>
+                    </div>
+                `;
+                div.onclick = () => loadNote(doc.id, item.data);
                 list.appendChild(div);
             });
         });
+
+        window.loadNote = (id, dataURL) => {
+            const img = new Image();
+            img.onload = () => {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // 保持比例繪製或拉伸
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                editDocId = id;
+                document.getElementById('edit-tag').style.display = 'inline';
+                toggleHistory();
+            };
+            img.src = dataURL;
+        };
+
+        window.deleteNote = async (e, id) => {
+            e.stopPropagation();
+            if(confirm("確定要刪除這筆紀錄嗎？")) {
+                await db.collection("handwriting_notes").doc(id).delete();
+                if(editDocId === id) {
+                    editDocId = null;
+                    document.getElementById('edit-tag').style.display = 'none';
+                }
+            }
+        };
     </script>
 </body>
 </html>
